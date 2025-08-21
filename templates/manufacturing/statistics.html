@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estadísticas de Producción</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .alert-item {
+            border-left: 4px solid #dc3545;
+            background: #f8f9fa;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% url 'manufacturing:dashboard' %}">
+                <i class="fas fa-industry"></i> Sistema de Manufactura
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{% url 'manufacturing:dashboard' %}">Dashboard</a>
+                <a class="nav-link" href="{% url 'manufacturing:summary' %}">Resumen</a>
+                <a class="nav-link active" href="{% url 'manufacturing:statistics' %}">Estadísticas</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-barcode fa-2x mb-2"></i>
+                    <h4 id="total-serials">{{ total_serials }}</h4>
+                    <p>Números de Serie</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <h4 id="completed-serials">{{ completed_serials }}</h4>
+                    <p>Completados</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h4 id="pending-serials">{{ pending_serials }}</h4>
+                    <p>Pendientes</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card text-center">
+                    <i class="fas fa-percentage fa-2x mb-2"></i>
+                    <h4 id="completion-rate">{{ completion_rate }}%</h4>
+                    <p>Tasa de Completado</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-pie"></i> Estado de Números de Serie</h5>
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-bar"></i> Operaciones por Estado</h5>
+                    <canvas id="operationsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="chart-container">
+                    <h5><i class="fas fa-chart-line"></i> Producción por Día</h5>
+                    <canvas id="productionChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="chart-container">
+                    <h5><i class="fas fa-exclamation-triangle"></i> Alertas de Producción</h5>
+                    <div id="alerts-container">
+                        {% for alert in alerts %}
+                        <div class="alert-item">
+                            <strong>{{ alert.alert_type|title }}</strong><br>
+                            <small>{{ alert.message }}</small><br>
+                            <small class="text-muted">{{ alert.created_at|date:"d/m/Y H:i" }}</small>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No hay alertas activas</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // WebSocket connection for real-time updates
+        const socket = new WebSocket('ws://localhost:8000/ws/manufacturing/');
+        
+        socket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            if (data.type === 'statistics_update') {
+                updateStatistics(data.statistics);
+            }
+        };
+
+        // Initialize charts
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+        const statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completado', 'En Proceso', 'Pendiente'],
+                datasets: [{
+                    data: [{{ completed_serials }}, {{ in_process_serials }}, {{ pending_serials }}],
+                    backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+
+        const operationsCtx = document.getElementById('operationsChart').getContext('2d');
+        const operationsChart = new Chart(operationsCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ operations_labels|safe }},
+                datasets: [{
+                    label: 'Completadas',
+                    data: {{ operations_completed|safe }},
+                    backgroundColor: '#28a745'
+                }, {
+                    label: 'Pendientes',
+                    data: {{ operations_pending|safe }},
+                    backgroundColor: '#dc3545'
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        const productionCtx = document.getElementById('productionChart').getContext('2d');
+        const productionChart = new Chart(productionCtx, {
+            type: 'line',
+            data: {
+                labels: {{ production_dates|safe }},
+                datasets: [{
+                    label: 'Números de Serie Generados',
+                    data: {{ production_counts|safe }},
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+
+        function updateStatistics(stats) {
+            document.getElementById('total-serials').textContent = stats.total_serials;
+            document.getElementById('completed-serials').textContent = stats.completed_serials;
+            document.getElementById('pending-serials').textContent = stats.pending_serials;
+            document.getElementById('completion-rate').textContent = stats.completion_rate + '%';
+            
+            // Update charts
+            statusChart.data.datasets[0].data = [stats.completed_serials, stats.in_process_serials, stats.pending_serials];
+            statusChart.update();
+        }
+
+        // Auto-refresh every minute
+        setInterval(function() {
+            fetch('/api/statistics/')
+                .then(response => response.json())
+                .then(data => updateStatistics(data));
+        }, 60000);
+    </script>
+</body>
+</html>

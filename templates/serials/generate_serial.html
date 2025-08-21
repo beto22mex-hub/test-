@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}Generar Número de Serie - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-plus-circle me-2"></i>Generar Números de Serie</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Información de los Números de Serie</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="serialForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.order_number.id_for_label }}" class="form-label">Número de Orden</label>
+                                {{ form.order_number }}
+                                {% if form.order_number.errors %}
+                                    <div class="text-danger small">{{ form.order_number.errors.0 }}</div>
+                                {% endif %}
+                                <div id="order-validation" class="small mt-1"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.authorized_part.id_for_label }}" class="form-label">Componente Autorizado</label>
+                                {{ form.authorized_part }}
+                                {% if form.authorized_part.errors %}
+                                    <div class="text-danger small">{{ form.authorized_part.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Added quantity selection -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.quantity.id_for_label }}" class="form-label">Cantidad a Generar</label>
+                                {{ form.quantity }}
+                                {% if form.quantity.errors %}
+                                    <div class="text-danger small">{{ form.quantity.errors.0 }}</div>
+                                {% endif %}
+                                <div class="form-text">Máximo 200 números de serie por generación</div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Formato de Número de Serie</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">Ejemplo:</span>
+                                    <input type="text" class="form-control" id="preview-serial" readonly value="KA001-001M">
+                                </div>
+                                <div class="form-text">Formato: [AÑO][MES]###-###M</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Added CSV export information -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                <strong>Archivo CSV:</strong> Al generar los números de serie, se creará automáticamente un archivo CSV con las columnas PN, SKU y SERIAL para descarga.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'analytics:dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-1"></i>Generar Números de Serie
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Componentes Autorizados</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for part in authorized_parts %}
+                    <div class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ part.part_number }}</strong>
+                                <p class="mb-1 small text-muted">{{ part.description|truncatechars:40 }}</p>
+                                <small class="text-muted">Rev. {{ part.revision }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Order number validation
+document.getElementById('{{ form.order_number.id_for_label }}').addEventListener('blur', function() {
+    const orderNumber = this.value;
+    if (orderNumber) {
+        fetch('{% url "serials:validate_order_number" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                order_number: orderNumber
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            const validationDiv = document.getElementById('order-validation');
+            if (data.valid) {
+                if (data.has_duplicates) {
+                    validationDiv.innerHTML = '<span class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>' + data.message + '</span>';
+                } else {
+                    validationDiv.innerHTML = '<span class="text-success"><i class="bi bi-check-circle me-1"></i>' + data.message + '</span>';
+                }
+            } else {
+                validationDiv.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle me-1"></i>' + data.message + '</span>';
+            }
+        });
+    }
+});
+
+function updateSerialPreview() {
+    const quantity = document.getElementById('{{ form.quantity.id_for_label }}').value;
+    const preview = document.getElementById('preview-serial');
+    
+    if (quantity > 1) {
+        preview.value = `KA001-001M ... KA001-${String(quantity).padStart(3, '0')}M`;
+    } else {
+        preview.value = 'KA001-001M';
+    }
+}
+
+document.getElementById('{{ form.quantity.id_for_label }}').addEventListener('change', updateSerialPreview);
+document.addEventListener('DOMContentLoaded', updateSerialPreview);
+</script>
+{% endblock %}

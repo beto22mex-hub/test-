@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Operador - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-person-workspace me-2"></i>Dashboard Operador</h2>
+    <div class="badge bg-primary fs-6">{{ user_role }}</div>
+</div>
+
+<!-- Current Assignment -->
+{% if current_assignment %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-play-circle me-2"></i>Operación Actual</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>{{ current_assignment.operation.name }}</h6>
+                        <p class="text-muted mb-2">{{ current_assignment.operation.description }}</p>
+                        <p><strong>Número de Serie:</strong> {{ current_assignment.serial_number.serial_number }}</p>
+                        <p><strong>Parte:</strong> {{ current_assignment.serial_number.authorized_part.part_number }}</p>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="mb-2">
+                            <span class="badge bg-warning">En Progreso</span>
+                        </div>
+                        <div class="btn-group">
+                            <a href="{% url 'operators:operation_work_view' current_assignment.id %}" class="btn btn-primary">
+                                <i class="bi bi-play me-1"></i>Trabajar
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="releaseOperation({{ current_assignment.id }})">
+                                <i class="bi bi-pause me-1"></i>Liberar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Available Operations -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-list-task me-2"></i>Operaciones Disponibles</h5>
+            </div>
+            <div class="card-body">
+                {% if available_operations %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Operación</th>
+                                    <th>Número de Serie</th>
+                                    <th>Parte</th>
+                                    <th>Estado</th>
+                                    <!-- Fixed split filter usage with explicit role checks -->
+                                    {% if user_role == 'SUPERVISOR' or user_role == 'ADMIN' %}
+                                    <th>Asignado a</th>
+                                    {% endif %}
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for operation in available_operations %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ operation.operation.name }}</strong>
+                                        <br><small class="text-muted">{{ operation.operation.description|truncatechars:50 }}</small>
+                                    </td>
+                                    <td>{{ operation.serial_number.serial_number }}</td>
+                                    <td>{{ operation.serial_number.authorized_part.part_number }}</td>
+                                    <td>
+                                        {% if operation.status == 'PENDING' %}
+                                            <span class="badge bg-secondary">Pendiente</span>
+                                        {% elif operation.status == 'IN_PROGRESS' %}
+                                            <span class="badge bg-warning">En Progreso</span>
+                                        {% endif %}
+                                    </td>
+                                    <!-- Fixed split filter usage with explicit role checks -->
+                                    {% if user_role == 'SUPERVISOR' or user_role == 'ADMIN' %}
+                                    <td>
+                                        {% if operation.assigned_operator %}
+                                            {{ operation.assigned_operator.get_full_name|default:operation.assigned_operator.username }}
+                                        {% else %}
+                                            <span class="text-muted">Sin asignar</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endif %}
+                                    <td>
+                                        {% if operation.status == 'PENDING' and not current_assignment %}
+                                            <button class="btn btn-sm btn-primary" onclick="assignOperation({{ operation.id }})">
+                                                <i class="bi bi-person-plus me-1"></i>Asignar
+                                            </button>
+                                        <!-- Fixed split filter usage with explicit role checks -->
+                                        {% elif user_role == 'SUPERVISOR' or user_role == 'ADMIN' %}
+                                            <button class="btn btn-sm btn-outline-primary" onclick="reassignOperation({{ operation.id }})">
+                                                <i class="bi bi-arrow-repeat me-1"></i>Reasignar
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                        <p class="text-muted mt-2">No hay operaciones disponibles</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics and History -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Estadísticas</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <h3 class="text-primary">{{ total_completed }}</h3>
+                        <p class="text-muted mb-0">Completadas</p>
+                    </div>
+                    <div class="col-6">
+                        <h3 class="text-success">{% if current_assignment %}1{% else %}0{% endif %}</h3>
+                        <p class="text-muted mb-0">En Progreso</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Historial Reciente</h5>
+            </div>
+            <div class="card-body">
+                {% if completed_operations %}
+                    {% for operation in completed_operations %}
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong>{{ operation.operation.name }}</strong>
+                            <br><small class="text-muted">{{ operation.serial_number.serial_number }}</small>
+                        </div>
+                        <small class="text-muted">{{ operation.completed_at|date:"d/m H:i" }}</small>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted text-center">Sin historial</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function assignOperation(processRecordId) {
+    fetch('{% url "operators:assign_operation" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            process_record_id: processRecordId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.message, 'error');
+        }
+    });
+}
+
+function releaseOperation(processRecordId) {
+    if (confirm('¿Estás seguro de que quieres liberar esta operación?')) {
+        fetch('{% url "operators:release_operation" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                process_record_id: processRecordId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message, 'success');
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showNotification(data.message, 'error');
+            }
+        });
+    }
+}
+
+function reassignOperation(processRecordId) {
+    // Implementation for reassigning operations (supervisor/admin only)
+    showNotification('Funcionalidad de reasignación en desarrollo', 'info');
+}
+</script>
+{% endblock %}

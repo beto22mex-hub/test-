@@ -1,0 +1,252 @@
+{% extends 'base.html' %}
+
+{% block title %}Resumen de Operaciones - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Resumen de Operaciones</h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Actualizar
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Agregando tabla de operaciones con funcionalidad de asignación -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Estado de Operaciones</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Operación</th>
+                                    <th>Secuencia</th>
+                                    <th>Operador Asignado</th>
+                                    <th>Número de Serie</th>
+                                    <th>Operaciones Libres</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in operations_data %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ item.operation.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.operation.description|truncatechars:50 }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ item.operation.sequence_number }}</span>
+                                    </td>
+                                    <td>
+                                        {% if item.assigned_operator %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-person-fill text-success me-2"></i>
+                                                <div>
+                                                    <strong>{{ item.assigned_operator.get_full_name|default:item.assigned_operator.username }}</strong>
+                                                    {% if item.assigned_operator.userprofile %}
+                                                        <br><small class="text-muted">{{ item.assigned_operator.userprofile.get_role_display }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i class="bi bi-person-dash me-1"></i>
+                                                Sin asignar
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.serial_number %}
+                                            <code>{{ item.serial_number.serial_number }}</code>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.free_operations_count > 0 %}
+                                            <span class="badge bg-success">{{ item.free_operations_count }} disponible{{ item.free_operations_count|pluralize:"s" }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">0 disponibles</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.is_available %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Disponible
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-clock me-1"></i>
+                                                Ocupada
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <!-- Botón para auto-asignarse a operación libre -->
+                                            {% if item.is_available %}
+                                                <button class="btn btn-sm btn-outline-primary" 
+                                                        onclick="assignToOperation({{ item.operation.id }})"
+                                                        title="Asignarme a esta operación">
+                                                    <i class="bi bi-person-plus"></i>
+                                                    Asignarme
+                                                </button>
+                                            {% endif %}
+                                            
+                                            <!-- Botón para cambiar operador (solo admin/supervisor) -->
+                                            {% if user_can_change_operator and item.assigned_operator %}
+                                                <button class="btn btn-sm btn-outline-warning" 
+                                                        onclick="showChangeOperatorModal({{ item.operation.id }}, '{{ item.operation.name }}')"
+                                                        title="Cambiar operador asignado">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                    Cambiar
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox display-4"></i>
+                                        <p class="mt-2">No hay operaciones disponibles</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cambiar operador -->
+{% if user_can_change_operator %}
+<div class="modal fade" id="changeOperatorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Operador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selecciona el nuevo operador para la operación: <strong id="operationName"></strong></p>
+                <div class="mb-3">
+                    <label for="newOperatorSelect" class="form-label">Nuevo Operador</label>
+                    <select class="form-select" id="newOperatorSelect">
+                        <option value="">Seleccionar operador...</option>
+                        {% for operator in available_operators %}
+                            <option value="{{ operator.user.id }}">
+                                {{ operator.user.get_full_name|default:operator.user.username }} 
+                                ({{ operator.get_role_display }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="changeOperator()">Cambiar Operador</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+let currentOperationId = null;
+
+function refreshData() {
+    location.reload();
+}
+
+function assignToOperation(operationId) {
+    if (!confirm('¿Estás seguro de que quieres asignarte a esta operación?')) {
+        return;
+    }
+    
+    fetch('{% url "analytics:assign_operator" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            operation_id: operationId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al asignar operación');
+    });
+}
+
+function showChangeOperatorModal(operationId, operationName) {
+    currentOperationId = operationId;
+    document.getElementById('operationName').textContent = operationName;
+    document.getElementById('newOperatorSelect').value = '';
+    
+    const modal = new bootstrap.Modal(document.getElementById('changeOperatorModal'));
+    modal.show();
+}
+
+function changeOperator() {
+    const newOperatorId = document.getElementById('newOperatorSelect').value;
+    
+    if (!newOperatorId) {
+        alert('Por favor selecciona un operador');
+        return;
+    }
+    
+    fetch('{% url "analytics:change_operator" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            operation_id: currentOperationId,
+            new_operator_id: newOperatorId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('changeOperatorModal'));
+            modal.hide();
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cambiar operador');
+    });
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

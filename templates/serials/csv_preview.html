@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Números de Serie Generados - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-check-circle-fill text-success me-2"></i>Números de Serie Generados</h2>
+    <a href="{% url 'serials:download_csv' %}" class="btn btn-success">
+        <i class="bi bi-download me-1"></i>Descargar CSV
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-2"></i>
+            Se generaron exitosamente <strong>{{ total_count }}</strong> número{{ total_count|pluralize }} de serie.
+        </div>
+        
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Vista Previa del Archivo CSV</h5>
+                <span class="badge bg-primary">{{ total_count }} registro{{ total_count|pluralize }}</span>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>PN</th>
+                                <th>SKU</th>
+                                <th>SERIAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for serial in generated_serials %}
+                            <tr>
+                                <td><code>{{ serial.part_number }}</code></td>
+                                <td><code>{{ serial.sku }}</code></td>
+                                <td><strong>{{ serial.serial_number }}</strong></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-between mt-4">
+            <a href="{% url 'serials:generate_serial' %}" class="btn btn-outline-primary">
+                <i class="bi bi-plus-circle me-1"></i>Generar Más Números
+            </a>
+            <a href="{% url 'serials:download_csv' %}" class="btn btn-success">
+                <i class="bi bi-download me-1"></i>Descargar Archivo CSV
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

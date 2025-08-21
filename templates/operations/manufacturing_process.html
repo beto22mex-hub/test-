@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Proceso de Manufactura - {{ serial.serial_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .process-step {
+        border-left: 4px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+    .process-step.completed {
+        border-left-color: #28a745;
+        background-color: #f8fff9;
+    }
+    .process-step.in-progress {
+        border-left-color: #ffc107;
+        background-color: #fffdf5;
+    }
+    .process-step.pending {
+        border-left-color: #6c757d;
+        background-color: #f8f9fa;
+    }
+    .process-step.current {
+        border-left-color: #007bff;
+        background-color: #f0f8ff;
+        box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+    }
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .serial-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+    }
+    .operation-card {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        transition: transform 0.2s ease;
+    }
+    .operation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header con información del serial -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="serial-info p-4 mb-4">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h2 class="mb-2">
+                            <i class="fas fa-microchip me-2"></i>
+                            {{ serial.serial_number }}
+                        </h2>
+                        <p class="mb-1">
+                            <strong>Componente:</strong> {{ serial.authorized_part.part_number }} - {{ serial.authorized_part.description }}
+                        </p>
+                        <p class="mb-1">
+                            <strong>Orden:</strong> {{ serial.order_number|default:"No asignada" }}
+                        </p>
+                        <p class="mb-0">
+                            <strong>Creado:</strong> {{ serial.created_at|date:"d/m/Y H:i" }} por {{ serial.created_by.get_full_name|default:serial.created_by.username }}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <span class="badge badge-lg 
+                            {% if serial.status == 'COMPLETED' %}bg-success
+                            {% elif serial.status == 'IN_PROGRESS' %}bg-warning
+                            {% elif serial.status == 'PENDING' %}bg-secondary
+                            {% elif serial.status == 'FAILED' %}bg-danger
+                            {% else %}bg-info{% endif %}">
+                            {{ serial.get_status_display }}
+                        </span>
+                        {% if current_operation %}
+                        <div class="mt-2">
+                            <small class="text-light">Operación Actual:</small><br>
+                            <strong>{{ current_operation.name }}</strong>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proceso de Manufactura -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        Proceso de Manufactura
+                    </h5>
+                    <a href="{% url 'operations:summary' %}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>
+                        Volver al Resumen
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if process_records %}
+                        <div class="row">
+                            {% for record in process_records %}
+                            <div class="col-md-6 col-lg-4 mb-3">
+                                <div class="operation-card process-step 
+                                    {% if record.status == 'COMPLETED' %}completed
+                                    {% elif record.status == 'IN_PROGRESS' %}in-progress
+                                    {% elif record.status == 'PENDING' and record.operation == current_operation %}current
+                                    {% else %}pending{% endif %} p-3 h-100">
+                                    
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0">
+                                            <span class="badge bg-light text-dark me-2">{{ record.operation.sequence_number }}</span>
+                                            {{ record.operation.name }}
+                                        </h6>
+                                        <span class="status-badge badge 
+                                            {% if record.status == 'COMPLETED' %}bg-success
+                                            {% elif record.status == 'IN_PROGRESS' %}bg-warning
+                                            {% elif record.status == 'PENDING' %}bg-secondary
+                                            {% else %}bg-danger{% endif %}">
+                                            {% if record.status == 'COMPLETED' %}Completado
+                                            {% elif record.status == 'IN_PROGRESS' %}En Proceso
+                                            {% elif record.status == 'PENDING' %}Pendiente
+                                            {% else %}{{ record.get_status_display }}{% endif %}
+                                        </span>
+                                    </div>
+                                    
+                                    <p class="text-muted small mb-2">{{ record.operation.description }}</p>
+                                    
+                                    {% if record.assigned_operator %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Operador Asignado:</small><br>
+                                        <strong>{{ record.assigned_operator.user.get_full_name|default:record.assigned_operator.user.username }}</strong>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if record.processed_by %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Procesado por:</small><br>
+                                        <strong>{{ record.processed_by.get_full_name|default:record.processed_by.username }}</strong>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if record.processed_at %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Fecha de Proceso:</small><br>
+                                        <small>{{ record.processed_at|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if record.notes %}
+                                    <div class="mb-2">
+                                        <small class="text-muted">Notas:</small><br>
+                                        <small>{{ record.notes }}</small>
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <!-- Botones de acción -->
+                                    {% if record.status == 'PENDING' and record.operation == current_operation %}
+                                        {% if not record.assigned_operator %}
+                                            <button class="btn btn-primary btn-sm w-100 mt-2" onclick="assignToMe('{{ record.id }}')">
+                                                <i class="fas fa-user-plus me-1"></i>
+                                                Asignarme
+                                            </button>
+                                        {% elif record.assigned_operator.user == request.user %}
+                                            <button class="btn btn-success btn-sm w-100 mt-2" onclick="startProcess('{{ record.id }}')">
+                                                <i class="fas fa-play me-1"></i>
+                                                Iniciar Proceso
+                                            </button>
+                                        {% endif %}
+                                    {% elif record.status == 'IN_PROGRESS' and record.assigned_operator.user == request.user %}
+                                        <div class="d-grid gap-2 mt-2">
+                                            <button class="btn btn-success btn-sm" onclick="completeProcess('{{ record.id }}')">
+                                                <i class="fas fa-check me-1"></i>
+                                                Completar
+                                            </button>
+                                            <!-- Agregado botón para rechazar operación -->
+                                            <button class="btn btn-danger btn-sm" onclick="rejectProcess('{{ record.id }}')">
+                                                <i class="fas fa-times me-1"></i>
+                                                Rechazar
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-exclamation-triangle fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay registros de proceso</h5>
+                            <p class="text-muted">Este número de serie no tiene operaciones de proceso definidas.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para completar proceso -->
+<div class="modal fade" id="completeProcessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Completar Proceso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="completeProcessForm">
+                    <input type="hidden" id="processRecordId" name="process_record_id">
+                    <!-- Agregado campo de contraseña obligatorio -->
+                    <div class="mb-3">
+                        <label for="userPassword" class="form-label">Contraseña <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="userPassword" name="password" required
+                               placeholder="Ingresa tu contraseña para confirmar">
+                        <div class="form-text">Debes ingresar tu contraseña para completar la operación.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="processNotes" class="form-label">Notas del Proceso (Opcional)</label>
+                        <textarea class="form-control" id="processNotes" name="notes" rows="3" 
+                                placeholder="Agregar comentarios sobre el proceso..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmCompletion" required>
+                            <label class="form-check-label" for="confirmCompletion">
+                                Confirmo que el proceso se ha completado correctamente
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="submitCompleteProcess()">
+                    <i class="fas fa-check me-1"></i>
+                    Completar Proceso
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Agregado modal para rechazar proceso -->
+<div class="modal fade" id="rejectProcessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rechazar Proceso</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="rejectProcessForm">
+                    <input type="hidden" id="rejectProcessRecordId" name="process_record_id">
+                    <!-- Campo de contraseña obligatorio para rechazar -->
+                    <div class="mb-3">
+                        <label for="rejectUserPassword" class="form-label">Contraseña <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="rejectUserPassword" name="password" required
+                               placeholder="Ingresa tu contraseña para confirmar">
+                        <div class="form-text">Debes ingresar tu contraseña para rechazar la operación.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rejectReason" class="form-label">Motivo del Rechazo <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="rejectReason" name="reject_reason" rows="3" required
+                                placeholder="Describe el motivo por el cual se rechaza esta operación..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="confirmRejection" required>
+                            <label class="form-check-label" for="confirmRejection">
+                                Confirmo que deseo rechazar este proceso y enviarlo a reparación
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="submitRejectProcess()">
+                    <i class="fas fa-times me-1"></i>
+                    Rechazar Proceso
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para asignarse a un proceso
+function assignToMe(processRecordId) {
+    if (confirm('¿Estás seguro de que quieres asignarte a esta operación?')) {
+        fetch(`/analytics/assign_operator/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                'process_record_id': processRecordId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'Error al asignar operación');
+        });
+    }
+}
+
+// Función para iniciar proceso
+function startProcess(processRecordId) {
+    if (confirm('¿Estás seguro de que quieres iniciar este proceso?')) {
+        fetch(`/analytics/start_process/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                'process_record_id': processRecordId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showAlert('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showAlert('error', 'Error al iniciar proceso');
+        });
+    }
+}
+
+// Función para completar proceso
+function completeProcess(processRecordId) {
+    document.getElementById('processRecordId').value = processRecordId;
+    document.getElementById('userPassword').value = '';
+    document.getElementById('processNotes').value = '';
+    document.getElementById('confirmCompletion').checked = false;
+    new bootstrap.Modal(document.getElementById('completeProcessModal')).show();
+}
+
+function rejectProcess(processRecordId) {
+    document.getElementById('rejectProcessRecordId').value = processRecordId;
+    document.getElementById('rejectUserPassword').value = '';
+    document.getElementById('rejectReason').value = '';
+    document.getElementById('confirmRejection').checked = false;
+    new bootstrap.Modal(document.getElementById('rejectProcessModal')).show();
+}
+
+// Función para enviar completar proceso
+function submitCompleteProcess() {
+    const form = document.getElementById('completeProcessForm');
+    const formData = new FormData(form);
+    
+    if (!document.getElementById('confirmCompletion').checked) {
+        showAlert('error', 'Debes confirmar que el proceso se ha completado');
+        return;
+    }
+    
+    if (!document.getElementById('userPassword').value.trim()) {
+        showAlert('error', 'Debes ingresar tu contraseña para completar el proceso');
+        return;
+    }
+    
+    fetch(`/analytics/complete_process/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            bootstrap.Modal.getInstance(document.getElementById('completeProcessModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert('error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('error', 'Error al completar proceso');
+    });
+}
+
+function submitRejectProcess() {
+    const form = document.getElementById('rejectProcessForm');
+    const formData = new FormData(form);
+    
+    if (!document.getElementById('confirmRejection').checked) {
+        showAlert('error', 'Debes confirmar que deseas rechazar el proceso');
+        return;
+    }
+    
+    if (!document.getElementById('rejectUserPassword').value.trim()) {
+        showAlert('error', 'Debes ingresar tu contraseña para rechazar el proceso');
+        return;
+    }
+    
+    if (!document.getElementById('rejectReason').value.trim()) {
+        showAlert('error', 'Debes especificar el motivo del rechazo');
+        return;
+    }
+    
+    fetch(`/analytics/reject_process/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken')
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            bootstrap.Modal.getInstance(document.getElementById('rejectProcessModal')).hide();
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showAlert('error', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('error', 'Error al rechazar proceso');
+    });
+}
+
+// Función para mostrar alertas
+function showAlert(type, message) {
+    const alertClass = type === 'success' ? 'alert-success' : 'alert-danger';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show position-fixed" 
+             style="top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        const alert = document.querySelector('.alert');
+        if (alert) {
+            bootstrap.Alert.getOrCreateInstance(alert).close();
+        }
+    }, 5000);
+}
+
+// Función para obtener CSRF token
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

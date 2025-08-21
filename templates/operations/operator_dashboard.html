@@ -1,0 +1,404 @@
+<!-- Added serial number search functionality for operators -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Panel de Operador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Panel de Operador</h2>
+                <div class="text-muted">
+                    <i class="fas fa-user"></i> {{ user.get_full_name|default:user.username }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Serial Number Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-search"></i> Buscar Número de Serie
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" 
+                                   id="serialSearch" 
+                                   class="form-control" 
+                                   placeholder="Buscar por número de serie, orden, parte o SKU..."
+                                   autocomplete="off">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-primary" onclick="searchSerials()">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Results -->
+                    <div id="searchResults" class="mt-3" style="display: none;">
+                        <h6>Resultados de Búsqueda:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Número de Serie</th>
+                                        <th>Orden</th>
+                                        <th>Parte</th>
+                                        <th>SKU</th>
+                                        <th>Estado</th>
+                                        <th>Progreso</th>
+                                        <th>Operación Actual</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="searchResultsBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Assignment -->
+    {% if current_assignment %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog"></i> Operación Actual
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>{{ current_assignment.operation.name }}</h6>
+                            <p class="text-muted">{{ current_assignment.operation.description }}</p>
+                            <p><strong>Número de Serie:</strong> {{ current_assignment.serial_number.serial_number }}</p>
+                            <p><strong>Orden:</strong> {{ current_assignment.serial_number.order_number }}</p>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success" onclick="completeProcess({{ current_assignment.id }})">
+                                    <i class="fas fa-check"></i> Aprobar
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="rejectProcess({{ current_assignment.id }})">
+                                    <i class="fas fa-times"></i> Rechazar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Available Operations -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Operaciones Disponibles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if available_operations %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Operación</th>
+                                        <th>Descripción</th>
+                                        <th>Tiempo Estimado</th>
+                                        <th>Disponibles</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for op_data in available_operations %}
+                                    <tr>
+                                        <td>{{ op_data.operation.name }}</td>
+                                        <td>{{ op_data.operation.description }}</td>
+                                        <td>{{ op_data.operation.estimated_time_minutes }} min</td>
+                                        <td>
+                                            <span class="badge badge-info">{{ op_data.available_count }}</span>
+                                        </td>
+                                        <td>
+                                            {% if op_data.available_count > 0 %}
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-primary" 
+                                                        onclick="assignToOperation({{ op_data.operation.id }})">
+                                                    <i class="fas fa-hand-paper"></i> Tomar
+                                                </button>
+                                            {% else %}
+                                                <span class="text-muted">No disponible</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> No hay operaciones disponibles en este momento.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modals for Process Actions -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Completar Proceso</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="completeForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Contraseña de Confirmación:</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Notas (opcional):</label>
+                        <textarea class="form-control" name="notes" rows="3"></textarea>
+                    </div>
+                    <input type="hidden" name="process_record_id" id="completeProcessId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Completar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rechazar Proceso</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="rejectForm">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Contraseña de Confirmación:</label>
+                        <input type="password" class="form-control" name="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Motivo del Rechazo:</label>
+                        <textarea class="form-control" name="reject_reason" rows="3" required></textarea>
+                    </div>
+                    <input type="hidden" name="process_record_id" id="rejectProcessId">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-danger">Rechazar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Serial number search functionality
+let searchTimeout;
+
+document.getElementById('serialSearch').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    const query = this.value.trim();
+    
+    if (query.length >= 3) {
+        searchTimeout = setTimeout(() => {
+            searchSerials();
+        }, 500);
+    } else {
+        document.getElementById('searchResults').style.display = 'none';
+    }
+});
+
+function searchSerials() {
+    const query = document.getElementById('serialSearch').value.trim();
+    
+    if (query.length < 3) {
+        alert('Ingresa al menos 3 caracteres para buscar');
+        return;
+    }
+    
+    fetch(`/serials/api/search/?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            displaySearchResults(data.serials);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al buscar números de serie');
+        });
+}
+
+function displaySearchResults(serials) {
+    const resultsDiv = document.getElementById('searchResults');
+    const tbody = document.getElementById('searchResultsBody');
+    
+    tbody.innerHTML = '';
+    
+    if (serials.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center">No se encontraron resultados</td></tr>';
+    } else {
+        serials.forEach(serial => {
+            const row = `
+                <tr>
+                    <td>${serial.serial_number}</td>
+                    <td>${serial.order_number}</td>
+                    <td>${serial.part_number}</td>
+                    <td>${serial.sku}</td>
+                    <td><span class="badge badge-info">${serial.status}</span></td>
+                    <td>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar" role="progressbar" style="width: ${serial.completion_percentage}%">
+                                ${serial.completion_percentage}%
+                            </div>
+                        </div>
+                    </td>
+                    <td>${serial.current_operation}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="viewSerial('${serial.serial_number}')">
+                            <i class="fas fa-eye"></i> Ver
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
+    
+    resultsDiv.style.display = 'block';
+}
+
+function viewSerial(serialNumber) {
+    window.open(`/operations/process/${serialNumber}/`, '_blank');
+}
+
+// Operation assignment
+function assignToOperation(operationId) {
+    if (confirm('¿Estás seguro de que quieres tomar esta operación?')) {
+        fetch('/analytics/api/assign-operator/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                operation_id: operationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al asignar operación');
+        });
+    }
+}
+
+// Process completion
+function completeProcess(processId) {
+    document.getElementById('completeProcessId').value = processId;
+    $('#completeModal').modal('show');
+}
+
+function rejectProcess(processId) {
+    document.getElementById('rejectProcessId').value = processId;
+    $('#rejectModal').modal('show');
+}
+
+// Form submissions
+document.getElementById('completeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/analytics/api/complete-process/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al completar proceso');
+    });
+    
+    $('#completeModal').modal('hide');
+});
+
+document.getElementById('rejectForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/analytics/api/reject-process/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al rechazar proceso');
+    });
+    
+    $('#rejectModal').modal('hide');
+});
+</script>
+{% endblock %}

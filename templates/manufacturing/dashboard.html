@@ -1,0 +1,299 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard de Producción</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="refreshDashboard()">
+                <i class="bi bi-arrow-clockwise me-1"></i>
+                Actualizar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Series</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ total_serials }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-hash h2 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Completados</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ completed_serials }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-check-circle h2 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">En Proceso</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ in_process_serials }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-clock h2 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stat-card danger">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Alertas</div>
+                        <div class="h5 mb-0 font-weight-bold">{{ active_alerts.count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-exclamation-triangle h2 text-white-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Overview -->
+<div class="row mb-4">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-check me-2"></i>
+                    Números de Serie Recientes
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Número de Serie</th>
+                                <th>Orden</th>
+                                <th>Componente</th>
+                                <th>Estado</th>
+                                <th>Progreso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for serial in recent_serials %}
+                            <tr>
+                                <td>
+                                    <strong>{{ serial.serial_number }}</strong>
+                                </td>
+                                <td>{{ serial.order_number }}</td>
+                                <td>
+                                    <small class="text-muted">{{ serial.authorized_part.part_number }}</small><br>
+                                    {{ serial.authorized_part.description|truncatechars:30 }}
+                                </td>
+                                <td>
+                                    {% if serial.status == 'COMPLETED' %}
+                                        <span class="badge bg-success">Completado</span>
+                                    {% elif serial.status == 'IN_PROCESS' %}
+                                        <span class="badge bg-warning">En Proceso</span>
+                                    {% elif serial.status == 'REJECTED' %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Creado</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar 
+                                            {% if serial.completion_percentage == 100 %}bg-success
+                                            {% elif serial.completion_percentage >= 50 %}bg-warning
+                                            {% else %}bg-info{% endif %}" 
+                                            role="progressbar" 
+                                            style="width: {{ serial.completion_percentage }}%">
+                                            {{ serial.completion_percentage }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <a href="{% url 'manufacturing:manufacturing_process' serial.serial_number %}" 
+                                       class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    No hay números de serie registrados
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <!-- Production Rate -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-speedometer2 me-2"></i>
+                    Tasa de Completado
+                </h5>
+            </div>
+            <div class="card-body text-center">
+                <div class="h1 text-primary">{{ completion_rate }}%</div>
+                <p class="text-muted">De {{ total_serials }} números de serie</p>
+                <div class="progress">
+                    <div class="progress-bar bg-primary" role="progressbar" style="width: {{ completion_rate }}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    Alertas Activas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% for alert in active_alerts %}
+                <div class="alert alert-{{ alert.priority|lower }} alert-sm mb-2">
+                    <strong>{{ alert.title }}</strong><br>
+                    <small>{{ alert.message|truncatechars:50 }}</small>
+                </div>
+                {% empty %}
+                <p class="text-muted text-center">No hay alertas activas</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-lightning me-2"></i>
+                    Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'manufacturing:generate_serial' %}" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle me-2"></i>
+                            Generar Número de Serie
+                        </a>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'manufacturing:summary' %}" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-table me-2"></i>
+                            Ver Resumen Completo
+                        </a>
+                    </div>
+                    {% if user.is_superuser or user.userprofile.can_view_statistics %}
+                    <div class="col-md-3 mb-3">
+                        <a href="{% url 'manufacturing:statistics' %}" class="btn btn-outline-success w-100">
+                            <i class="bi bi-bar-chart me-2"></i>
+                            Ver Estadísticas
+                        </a>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-3 mb-3">
+                        <button class="btn btn-outline-info w-100" onclick="exportData()">
+                            <i class="bi bi-download me-2"></i>
+                            Exportar Datos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function refreshDashboard() {
+    location.reload();
+}
+
+function exportData() {
+    const exportModal = `
+        <div class="modal fade" id="exportModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Exportar Datos</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Seleccione el formato de exportación:</p>
+                        <div class="d-grid gap-2">
+                            <a href="/api/export-excel/" class="btn btn-success">
+                                <i class="bi bi-file-earmark-excel me-2"></i>
+                                Exportar a Excel
+                            </a>
+                            <a href="/api/export-pdf/" class="btn btn-danger">
+                                <i class="bi bi-file-earmark-pdf me-2"></i>
+                                Exportar a PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', exportModal);
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+    
+    document.getElementById('exportModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Auto-refresh dashboard every 60 seconds
+setInterval(function() {
+    if (dashboardSocket && dashboardSocket.readyState === WebSocket.OPEN) {
+        dashboardSocket.send(JSON.stringify({
+            'type': 'refresh_dashboard'
+        }));
+    }
+}, 60000);
+</script>
+{% endblock %}

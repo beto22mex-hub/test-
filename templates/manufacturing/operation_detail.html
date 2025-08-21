@@ -1,0 +1,435 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle de Operación{% endblock %}
+
+{% block extra_css %}
+<style>
+    .operation-detail-card {
+        border-left: 4px solid #007bff;
+    }
+    .progress-step {
+        position: relative;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 0.5rem;
+        background: #f8f9fa;
+        border-left: 4px solid #e9ecef;
+    }
+    .progress-step.completed {
+        background: #d4edda;
+        border-left-color: #28a745;
+    }
+    .progress-step.current {
+        background: #fff3cd;
+        border-left-color: #ffc107;
+    }
+    .timer-display {
+        font-family: 'Courier New', monospace;
+        font-size: 2rem;
+        font-weight: bold;
+        color: #007bff;
+        text-align: center;
+        padding: 1rem;
+        background: #f8f9ff;
+        border-radius: 0.5rem;
+        border: 2px solid #007bff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">Detalle de Operación</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'manufacturing:operator_dashboard' %}">Dashboard Operador</a>
+                            </li>
+                            <li class="breadcrumb-item active">{{ process_record.operation.name }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{% url 'manufacturing:operator_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-1"></i>Volver
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información Principal -->
+        <div class="col-lg-8">
+            <div class="card operation-detail-card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>{{ process_record.operation.name }}
+                        <span class="badge bg-light text-primary ms-2">OP{{ process_record.operation.sequence_number }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">Información del Número de Serie</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Número de Serie:</strong></td>
+                                    <td><code>{{ process_record.serial_number.serial_number }}</code></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Orden:</strong></td>
+                                    <td>{{ process_record.serial_number.order_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Componente:</strong></td>
+                                    <td>{{ process_record.serial_number.authorized_part.part_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Descripción:</strong></td>
+                                    <td>{{ process_record.serial_number.authorized_part.description }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Revisión:</strong></td>
+                                    <td>{{ process_record.serial_number.authorized_part.revision }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">Información de la Operación</h6>
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Operación:</strong></td>
+                                    <td>{{ process_record.operation.name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Secuencia:</strong></td>
+                                    <td>{{ process_record.operation.sequence_number }} de 7</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Tiempo Estimado:</strong></td>
+                                    <td>{{ process_record.operation.estimated_time_minutes }} minutos</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Iniciado:</strong></td>
+                                    <td>{{ process_record.started_at|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Estado:</strong></td>
+                                    <td>
+                                        <span class="badge bg-warning">En Progreso</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <h6 class="text-primary mb-3">Descripción de la Operación</h6>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            {{ process_record.operation.description }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progreso del Número de Serie -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>Progreso del Número de Serie
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for record in process_record.serial_number.process_records.all %}
+                        <div class="col-md-6 mb-2">
+                            <div class="progress-step {% if record.status == 'APPROVED' %}completed{% elif record.id == process_record.id %}current{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>OP{{ record.operation.sequence_number }}: {{ record.operation.name }}</strong>
+                                        {% if record.status == 'APPROVED' %}
+                                        <br><small class="text-success">
+                                            <i class="fas fa-check me-1"></i>Completado {{ record.completed_at|date:"d/m H:i" }}
+                                        </small>
+                                        {% elif record.id == process_record.id %}
+                                        <br><small class="text-warning">
+                                            <i class="fas fa-clock me-1"></i>En progreso
+                                        </small>
+                                        {% else %}
+                                        <br><small class="text-muted">
+                                            <i class="fas fa-hourglass me-1"></i>Pendiente
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        {% if record.status == 'APPROVED' %}
+                                        <i class="fas fa-check-circle text-success fa-lg"></i>
+                                        {% elif record.id == process_record.id %}
+                                        <i class="fas fa-play-circle text-warning fa-lg"></i>
+                                        {% else %}
+                                        <i class="fas fa-circle text-muted fa-lg"></i>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" 
+                                 style="width: {{ process_record.serial_number.completion_percentage }}%">
+                                {{ process_record.serial_number.completion_percentage }}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Lateral -->
+        <div class="col-lg-4">
+            <!-- Timer -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stopwatch me-2"></i>Tiempo Transcurrido
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="timer-display" id="operation-timer">00:00:00</div>
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            Iniciado: {{ process_record.started_at|date:"H:i" }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>Acciones
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="showCompleteModal()">
+                            <i class="fas fa-check me-2"></i>Completar Operación
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="releaseOperation()">
+                            <i class="fas fa-times me-2"></i>Liberar Operación
+                        </button>
+                        <button class="btn btn-outline-info" onclick="addNote()">
+                            <i class="fas fa-sticky-note me-2"></i>Agregar Nota
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notas -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard me-2"></i>Notas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="notes-container">
+                        {% if process_record.notes %}
+                        <div class="alert alert-light">
+                            {{ process_record.notes|linebreaks }}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-center">Sin notas</p>
+                        {% endif %}
+                    </div>
+                    <textarea class="form-control" id="new-note" rows="3" 
+                              placeholder="Agregar nueva nota..." style="display: none;"></textarea>
+                    <div class="mt-2" id="note-actions" style="display: none;">
+                        <button class="btn btn-sm btn-primary" onclick="saveNote()">Guardar</button>
+                        <button class="btn btn-sm btn-secondary" onclick="cancelNote()">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Completar Operación -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Completar Operación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="completeForm">
+                    <div class="mb-3">
+                        <label class="form-label">Notas Finales de la Operación</label>
+                        <textarea class="form-control" id="operationNotes" rows="4" 
+                                  placeholder="Describe el resultado de la operación, observaciones importantes, problemas encontrados, etc.">{{ process_record.notes }}</textarea>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="qualityCheck">
+                        <label class="form-check-label" for="qualityCheck">
+                            <strong>Control de calidad aprobado</strong>
+                            <br><small class="text-muted">Confirmo que la operación cumple con los estándares de calidad</small>
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="completeOperation()">
+                    <i class="fas fa-check me-1"></i>Completar Operación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let startTime = new Date('{{ process_record.started_at|date:"c" }}');
+
+// Actualizar timer
+function updateTimer() {
+    const now = new Date();
+    const elapsed = Math.floor((now - startTime) / 1000);
+    
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+    
+    const timerDisplay = document.getElementById('operation-timer');
+    if (timerDisplay) {
+        timerDisplay.textContent = 
+            `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+}
+
+// Inicializar timer
+updateTimer();
+setInterval(updateTimer, 1000);
+
+function showCompleteModal() {
+    const modal = new bootstrap.Modal(document.getElementById('completeModal'));
+    modal.show();
+}
+
+function completeOperation() {
+    const notes = document.getElementById('operationNotes').value;
+    const qualityPassed = document.getElementById('qualityCheck').checked;
+    
+    fetch('{% url "manufacturing:complete_operation" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            process_record_id: {{ process_record.id }},
+            notes: notes,
+            quality_passed: qualityPassed
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('success', data.message);
+            setTimeout(() => {
+                window.location.href = '{% url "manufacturing:operator_dashboard" %}';
+            }, 2000);
+        } else {
+            showAlert('danger', data.message);
+        }
+    })
+    .catch(error => {
+        showAlert('danger', 'Error de conexión');
+    });
+}
+
+function releaseOperation() {
+    if (confirm('¿Estás seguro de que quieres liberar esta operación? Perderás el progreso actual.')) {
+        fetch('{% url "manufacturing:release_operation" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                process_record_id: {{ process_record.id }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', data.message);
+                setTimeout(() => {
+                    window.location.href = '{% url "manufacturing:operator_dashboard" %}';
+                }, 2000);
+            } else {
+                showAlert('danger', data.message);
+            }
+        })
+        .catch(error => {
+            showAlert('danger', 'Error de conexión');
+        });
+    }
+}
+
+function addNote() {
+    document.getElementById('new-note').style.display = 'block';
+    document.getElementById('note-actions').style.display = 'block';
+    document.getElementById('new-note').focus();
+}
+
+function saveNote() {
+    const note = document.getElementById('new-note').value.trim();
+    if (note) {
+        // Aquí podrías hacer una llamada AJAX para guardar la nota
+        const notesContainer = document.getElementById('notes-container');
+        const currentNotes = notesContainer.innerHTML;
+        notesContainer.innerHTML = `<div class="alert alert-light">${note}</div>` + currentNotes;
+        cancelNote();
+        showAlert('success', 'Nota agregada');
+    }
+}
+
+function cancelNote() {
+    document.getElementById('new-note').style.display = 'none';
+    document.getElementById('note-actions').style.display = 'none';
+    document.getElementById('new-note').value = '';
+}
+
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.parentNode.removeChild(alertDiv);
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

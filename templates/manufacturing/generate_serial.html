@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+
+{% block title %}Generar Número de Serie - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Generar Número de Serie</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'manufacturing:summary' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>
+            Volver al Resumen
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-plus-circle me-2"></i>
+                    Información del Número de Serie
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="serialForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="id_order_number" class="form-label">Número de Orden *</label>
+                            <input type="text" class="form-control" id="id_order_number" name="order_number" 
+                                   value="{{ form.order_number.value|default:'' }}" required>
+                            <div class="form-text">Formato: letras, números, guiones y guiones bajos</div>
+                            {% if form.order_number.errors %}
+                                <div class="text-danger">{{ form.order_number.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="id_quantity" class="form-label">Cantidad</label>
+                            <input type="number" class="form-control" id="id_quantity" name="quantity" 
+                                   value="{{ form.quantity.value|default:1 }}" min="1" max="100">
+                            <div class="form-text">Número de series a generar (máximo 100)</div>
+                            {% if form.quantity.errors %}
+                                <div class="text-danger">{{ form.quantity.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="id_authorized_part" class="form-label">Componente Autorizado *</label>
+                        <select class="form-select" id="id_authorized_part" name="authorized_part" required>
+                            <option value="">Seleccione un componente</option>
+                            {% for part in authorized_parts %}
+                                <option value="{{ part.id }}" 
+                                        data-part-number="{{ part.part_number }}"
+                                        data-description="{{ part.description }}"
+                                        data-revision="{{ part.revision }}"
+                                        {% if form.authorized_part.value == part.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ part.part_number }} - {{ part.description }} (Rev. {{ part.revision }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                        {% if form.authorized_part.errors %}
+                            <div class="text-danger">{{ form.authorized_part.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary me-md-2" onclick="resetForm()">
+                            <i class="bi bi-arrow-clockwise me-1"></i>
+                            Limpiar
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            Generar Número de Serie
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <!-- Preview Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-eye me-2"></i>
+                    Vista Previa
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="previewContent">
+                    <p class="text-muted text-center">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Complete el formulario para ver la vista previa
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Format Info -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Formato de Número de Serie
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-3">
+                    <code class="fs-5 text-primary">KM###W###R</code>
+                </div>
+                <ul class="list-unstyled">
+                    <li><strong>KM:</strong> Prefijo fijo</li>
+                    <li><strong>###:</strong> 3 dígitos consecutivos</li>
+                    <li><strong>W:</strong> Separador fijo</li>
+                    <li><strong>###:</strong> 3 dígitos consecutivos</li>
+                    <li><strong>R:</strong> Sufijo fijo</li>
+                </ul>
+                <div class="alert alert-info">
+                    <small>
+                        <i class="bi bi-lightbulb me-1"></i>
+                        Los números se generan automáticamente de forma secuencial
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Form validation and preview
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('serialForm');
+    const orderInput = document.getElementById('id_order_number');
+    const partSelect = document.getElementById('id_authorized_part');
+    const quantityInput = document.getElementById('id_quantity');
+    const previewContent = document.getElementById('previewContent');
+    
+    // Update preview when form changes
+    function updatePreview() {
+        const orderNumber = orderInput.value.trim();
+        const selectedPart = partSelect.options[partSelect.selectedIndex];
+        const quantity = quantityInput.value || 1;
+        
+        if (orderNumber && selectedPart.value) {
+            const partNumber = selectedPart.dataset.partNumber;
+            const description = selectedPart.dataset.description;
+            const revision = selectedPart.dataset.revision;
+            
+            previewContent.innerHTML = `
+                <div class="text-center">
+                    <div class="mb-3">
+                        <span class="badge bg-primary fs-6">Próximo: KM001W001R</span>
+                    </div>
+                    <hr>
+                    <div class="text-start">
+                        <p><strong>Orden:</strong> ${orderNumber}</p>
+                        <p><strong>Componente:</strong> ${partNumber}</p>
+                        <p><strong>Descripción:</strong> ${description}</p>
+                        <p><strong>Revisión:</strong> ${revision}</p>
+                        <p><strong>Cantidad:</strong> ${quantity}</p>
+                    </div>
+                </div>
+            `;
+        } else {
+            previewContent.innerHTML = `
+                <p class="text-muted text-center">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Complete el formulario para ver la vista previa
+                </p>
+            `;
+        }
+    }
+    
+    // Add event listeners
+    orderInput.addEventListener('input', updatePreview);
+    partSelect.addEventListener('change', updatePreview);
+    quantityInput.addEventListener('input', updatePreview);
+    
+    // Order number validation
+    orderInput.addEventListener('input', function() {
+        const value = this.value;
+        const isValid = /^[A-Za-z0-9\-_]*$/.test(value);
+        
+        if (!isValid && value.length > 0) {
+            this.classList.add('is-invalid');
+        } else {
+            this.classList.remove('is-invalid');
+        }
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-1"></i>Generando...';
+    });
+});
+
+function resetForm() {
+    document.getElementById('serialForm').reset();
+    document.getElementById('previewContent').innerHTML = `
+        <p class="text-muted text-center">
+            <i class="bi bi-info-circle me-1"></i>
+            Complete el formulario para ver la vista previa
+        </p>
+    `;
+}
+
+// Auto-complete for part numbers
+document.getElementById('id_authorized_part').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value) {
+        // Could add additional logic here for part-specific validations
+        console.log('Selected part:', selectedOption.dataset.partNumber);
+    }
+});
+</script>
+{% endblock %}

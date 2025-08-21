@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard de Defectos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Dashboard de Defectos</h1>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'defects:defects_dashboard' %}" class="btn btn-outline-primary">Todos</a>
+                    <a href="{% url 'defects:defects_dashboard' %}?status=OPEN" class="btn btn-outline-warning">Abiertos</a>
+                    <a href="{% url 'defects:defects_dashboard' %}?status=IN_REPAIR" class="btn btn-outline-info">En Reparación</a>
+                    <a href="{% url 'defects:defects_dashboard' %}?status=RESOLVED" class="btn btn-outline-success">Resueltos</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Defectos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_defects }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Abiertos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.open_defects }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">En Reparación</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.in_repair }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-tools fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Resueltos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.resolved }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Defects Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Defectos</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Número de Serie</th>
+                            <th>Operación</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Reportado por</th>
+                            <th>Asignado a</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for defect in defects %}
+                        <tr>
+                            <td>{{ defect.serial_number.serial_number }}</td>
+                            <td>{{ defect.operation.name }}</td>
+                            <td>{{ defect.get_defect_type_display }}</td>
+                            <td>
+                                <span class="badge badge-{% if defect.status == 'OPEN' %}warning{% elif defect.status == 'IN_REPAIR' %}info{% elif defect.status == 'RESOLVED' %}success{% else %}danger{% endif %}">
+                                    {{ defect.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ defect.reported_by.get_full_name|default:defect.reported_by.username }}</td>
+                            <td>
+                                {% if defect.assigned_repairer %}
+                                    {{ defect.assigned_repairer.get_full_name|default:defect.assigned_repairer.username }}
+                                {% else %}
+                                    Sin asignar
+                                {% endif %}
+                            </td>
+                            <td>{{ defect.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'defects:defect_detail' defect.id %}" class="btn btn-sm btn-outline-primary">Ver</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">No hay defectos registrados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

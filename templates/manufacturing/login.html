@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sistema de Manufactura</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .login-form {
+            padding: 60px 40px;
+        }
+        
+        .login-image {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            padding: 60px 40px;
+        }
+        
+        .form-control {
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+            padding: 12px 20px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .brand-title {
+            color: #333;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        .brand-subtitle {
+            color: #666;
+            margin-bottom: 40px;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .manufacturing-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            opacity: 0.9;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 30px;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            opacity: 0.9;
+        }
+        
+        .feature-list i {
+            margin-right: 10px;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="row g-0">
+                <!-- Login Form -->
+                <div class="col-lg-6">
+                    <div class="login-form">
+                        <div class="text-center mb-4">
+                            <h2 class="brand-title">
+                                <i class="bi bi-gear-fill me-2 text-primary"></i>
+                                Sistema de Manufactura
+                            </h2>
+                            <p class="brand-subtitle">Ingrese sus credenciales para acceder</p>
+                        </div>
+                        
+                        <!-- Messages -->
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                        
+                        <form method="post">
+                            {% csrf_token %}
+                            
+                            <div class="mb-4">
+                                <label for="id_username" class="form-label">
+                                    <i class="bi bi-person me-2"></i>
+                                    Usuario
+                                </label>
+                                <input type="text" class="form-control" id="id_username" name="username" 
+                                       value="{{ form.username.value|default:'' }}" required 
+                                       placeholder="Ingrese su nombre de usuario">
+                                {% if form.username.errors %}
+                                    <div class="text-danger mt-1">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="id_password" class="form-label">
+                                    <i class="bi bi-lock me-2"></i>
+                                    Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="id_password" name="password" 
+                                       required placeholder="Ingrese su contraseña">
+                                {% if form.password.errors %}
+                                    <div class="text-danger mt-1">{{ form.password.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-4 form-check">
+                                <input type="checkbox" class="form-check-input" id="remember_me">
+                                <label class="form-check-label" for="remember_me">
+                                    Recordar sesión
+                                </label>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                                    Iniciar Sesión
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="text-center mt-4">
+                            <small class="text-muted">
+                                ¿Problemas para acceder? Contacte al administrador del sistema
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Login Image/Info -->
+                <div class="col-lg-6">
+                    <div class="login-image">
+                        <div>
+                            <i class="bi bi-gear-wide-connected manufacturing-icon"></i>
+                            <h3 class="mb-3">Sistema de Gestión de Manufactura</h3>
+                            <p class="mb-4">
+                                Controle y supervise todo el proceso de manufactura con 
+                                números de serie únicos y seguimiento en tiempo real.
+                            </p>
+                            
+                            <ul class="feature-list">
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Generación automática de números de serie
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Seguimiento de 7 operaciones de manufactura
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Control de calidad integrado
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Reportes y estadísticas en tiempo real
+                                </li>
+                                <li>
+                                    <i class="bi bi-check-circle-fill"></i>
+                                    Gestión de usuarios y permisos
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Auto-focus on username field
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('id_username').focus();
+        });
+        
+        // Form validation
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const username = document.getElementById('id_username').value.trim();
+            const password = document.getElementById('id_password').value;
+            
+            if (!username || !password) {
+                e.preventDefault();
+                alert('Por favor complete todos los campos');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Iniciando sesión...';
+        });
+        
+        // Demo credentials info (remove in production)
+        console.log('Demo credentials: admin / admin123');
+    </script>
+</body>
+</html>

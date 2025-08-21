@@ -1,0 +1,473 @@
+{% extends 'base.html' %}
+
+{% block title %}Resumen Avanzado de Manufactura - Sistema de Manufactura{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="bi bi-graph-up me-2"></i>
+                    Resumen Avanzado de Manufactura
+                </h2>
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="refreshData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Actualizar
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportData()">
+                        <i class="bi bi-download me-1"></i>
+                        Exportar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-2">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Series</h6>
+                                    <h3>{{ summary_stats.total_serials }}</h3>
+                                </div>
+                                <i class="bi bi-collection display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Completadas</h6>
+                                    <h3>{{ summary_stats.completed }}</h3>
+                                </div>
+                                <i class="bi bi-check-circle display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">En Proceso</h6>
+                                    <h3>{{ summary_stats.in_process }}</h3>
+                                </div>
+                                <i class="bi bi-gear display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Pendientes</h6>
+                                    <h3>{{ summary_stats.pending }}</h3>
+                                </div>
+                                <i class="bi bi-clock display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Fallidas</h6>
+                                    <h3>{{ summary_stats.failed }}</h3>
+                                </div>
+                                <i class="bi bi-x-circle display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">FPY General</h6>
+                                    <h3>{{ overall_fpy }}%</h3>
+                                </div>
+                                <i class="bi bi-trophy display-6"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operations Metrics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-speedometer2 me-2"></i>
+                        Métricas por Operación
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Operación</th>
+                                    <th>Secuencia</th>
+                                    <th>FPY</th>
+                                    <th>Tiempo Ciclo Promedio</th>
+                                    <th>Operador Actual</th>
+                                    <th>Serie Actual</th>
+                                    <th>Disponibles</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for metric in operation_metrics %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ metric.operation.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ metric.operation.description|truncatechars:40 }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ metric.operation.sequence_number }}</span>
+                                    </td>
+                                    <td>
+                                        {% if metric.fpy >= 95 %}
+                                            <span class="badge bg-success">{{ metric.fpy }}%</span>
+                                        {% elif metric.fpy >= 85 %}
+                                            <span class="badge bg-warning">{{ metric.fpy }}%</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ metric.fpy }}%</span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">{{ metric.first_pass_count }}/{{ metric.total_processes }}</small>
+                                    </td>
+                                    <td>
+                                        {% if metric.avg_cycle_time %}
+                                            <strong>{{ metric.avg_cycle_time }} min</strong>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for assignment in metric.current_assignments %}
+                                            <div class="mb-1">
+                                                <i class="bi bi-person-fill text-success me-1"></i>
+                                                <strong>{{ assignment.assigned_operator.get_full_name|default:assignment.assigned_operator.username }}</strong>
+                                            </div>
+                                        {% empty %}
+                                            <span class="text-muted">
+                                                <i class="bi bi-person-dash me-1"></i>
+                                                Sin asignar
+                                            </span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% for assignment in metric.current_assignments %}
+                                            <div class="mb-1">
+                                                <code>{{ assignment.serial_number.serial_number }}</code>
+                                            </div>
+                                        {% empty %}
+                                            <span class="text-muted">-</span>
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        {% if metric.available_count > 0 %}
+                                            <span class="badge bg-success">{{ metric.available_count }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if metric.current_assignments %}
+                                            <span class="badge bg-warning">
+                                                <i class="bi bi-gear me-1"></i>
+                                                Activa
+                                            </span>
+                                        {% elif metric.available_count > 0 %}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Disponible
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="bi bi-pause me-1"></i>
+                                                Inactiva
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-funnel me-2"></i>
+                        Filtros
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Estado</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="">Todos los estados</option>
+                                {% for value, label in status_choices %}
+                                    <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                        {{ label }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="part" class="form-label">Número de Parte</label>
+                            <input type="text" class="form-control" id="part" name="part" 
+                                   value="{{ current_filters.part }}" placeholder="Buscar parte...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="order" class="form-label">Número de Orden</label>
+                            <input type="text" class="form-control" id="order" name="order" 
+                                   value="{{ current_filters.order }}" placeholder="Buscar orden...">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_from" class="form-label">Fecha Desde</label>
+                            <input type="date" class="form-control" id="date_from" name="date_from" 
+                                   value="{{ current_filters.date_from }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="date_to" class="form-label">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="date_to" name="date_to" 
+                                   value="{{ current_filters.date_to }}">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="bi bi-search me-1"></i>
+                                Filtrar
+                            </button>
+                            <a href="{% url 'manufacturing:summary' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-1"></i>
+                                Limpiar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Detailed Serial Numbers Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-list-ul me-2"></i>
+                        Detalle de Números de Serie
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Número de Serie</th>
+                                    <th>Orden</th>
+                                    <th>Parte</th>
+                                    <th>Estado General</th>
+                                    <th>Operación Actual</th>
+                                    <th>Operador Asignado</th>
+                                    <th>Progreso</th>
+                                    <th>Tiempo Total</th>
+                                    <th>Defectos</th>
+                                    <th>Creado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in page_obj %}
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            <a href="{% url 'manufacturing:manufacturing_process' item.serial.serial_number %}" 
+                                               class="text-decoration-none">
+                                                {{ item.serial.serial_number }}
+                                            </a>
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <code>{{ item.serial.order_number }}</code>
+                                    </td>
+                                    <td>
+                                        <strong>{{ item.serial.authorized_part.part_number }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.serial.authorized_part.description|truncatechars:30 }}</small>
+                                    </td>
+                                    <td>
+                                        {% if item.serial.status == 'COMPLETED' %}
+                                            <span class="badge bg-success">{{ item.serial.get_status_display }}</span>
+                                        {% elif item.serial.status == 'IN_PROCESS' %}
+                                            <span class="badge bg-warning">{{ item.serial.get_status_display }}</span>
+                                        {% elif item.serial.status == 'FAILED' %}
+                                            <span class="badge bg-danger">{{ item.serial.get_status_display }}</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ item.serial.get_status_display }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.current_process %}
+                                            <strong>{{ item.current_process.operation.name }}</strong>
+                                            <br>
+                                            <small class="text-muted">Seq. {{ item.current_process.operation.sequence_number }}</small>
+                                        {% else %}
+                                            <span class="text-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Completado
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.current_process and item.current_process.assigned_operator %}
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-person-fill text-success me-2"></i>
+                                                <div>
+                                                    <strong>{{ item.current_process.assigned_operator.get_full_name|default:item.current_process.assigned_operator.username }}</strong>
+                                                    {% if item.current_process.assigned_operator.userprofile %}
+                                                        <br><small class="text-muted">{{ item.current_process.assigned_operator.userprofile.get_role_display }}</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i class="bi bi-person-dash me-1"></i>
+                                                Sin asignar
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar 
+                                                {% if item.completion_percentage == 100 %}bg-success
+                                                {% elif item.completion_percentage >= 75 %}bg-info
+                                                {% elif item.completion_percentage >= 50 %}bg-warning
+                                                {% else %}bg-danger{% endif %}" 
+                                                 role="progressbar" 
+                                                 style="width: {{ item.completion_percentage }}%">
+                                                {{ item.completion_percentage }}%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if item.total_cycle_time %}
+                                            <strong>{{ item.total_cycle_time }} min</strong>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.defects_count > 0 %}
+                                            <span class="badge bg-danger">{{ item.defects_count }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            {{ item.serial.created_at|date:"d/m/Y H:i" }}
+                                            <br>
+                                            <span class="text-muted">{{ item.serial.created_by.get_full_name|default:item.serial.created_by.username }}</span>
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'manufacturing:manufacturing_process' item.serial.serial_number %}" 
+                                               class="btn btn-sm btn-outline-primary" title="Ver proceso">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            {% if item.current_process and not item.current_process.assigned_operator %}
+                                                <button class="btn btn-sm btn-outline-success" 
+                                                        onclick="quickAssign('{{ item.serial.serial_number }}')" 
+                                                        title="Asignación rápida">
+                                                    <i class="bi bi-person-plus"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="11" class="text-center text-muted py-4">
+                                        <i class="bi bi-inbox display-4"></i>
+                                        <p class="mt-2">No hay números de serie que coincidan con los filtros</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if page_obj.has_other_pages %}
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in current_filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Primera</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in current_filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Anterior</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in current_filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Siguiente</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in current_filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Última</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshData() {
+    location.reload();
+}
+
+function exportData() {
+    // TODO: Implement export functionality
+    alert('Funcionalidad de exportación en desarrollo');
+}
+
+function quickAssign(serialNumber) {
+    if (confirm(`¿Deseas asignarte a la operación actual del número de serie ${serialNumber}?`)) {
+        // TODO: Implement quick assignment
+        alert('Funcionalidad de asignación rápida en desarrollo');
+    }
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

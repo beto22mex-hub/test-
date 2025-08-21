@@ -1,0 +1,450 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Operación: {{ operation.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>{{ operation.name }}</h2>
+                <div>
+                    <span class="badge badge-info">Secuencia: {{ operation.sequence_number }}</span>
+                    <span class="badge badge-secondary">Tiempo estimado: {{ operation.estimated_time_minutes }} min</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información de la operación -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Información de la Operación</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Descripción:</strong> {{ operation.description }}</p>
+                    <p><strong>Requiere aprobación:</strong> 
+                        {% if operation.requires_approval %}
+                            <span class="badge badge-warning">Sí</span>
+                        {% else %}
+                            <span class="badge badge-success">No</span>
+                        {% endif %}
+                    </p>
+                    <p><strong>Tiempo iniciado:</strong> {{ process_record.started_at|date:"H:i:s" }}</p>
+                    <div id="timer" class="alert alert-info">
+                        <strong>Tiempo transcurrido: <span id="elapsed-time">00:00:00</span></strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Acciones</h5>
+                </div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-danger btn-block mb-2" onclick="releaseOperation()">
+                        <i class="fas fa-sign-out-alt"></i> Liberar Operación
+                    </button>
+                    <a href="{% url 'operators:operator_dashboard' %}" class="btn btn-secondary btn-block">
+                        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Selección de números de serie -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Números de Serie Disponibles</h5>
+                    <small class="text-muted">Selecciona un número de serie para procesar en esta operación</small>
+                </div>
+                <div class="card-body">
+                    <!-- Agregando campo de búsqueda por número de serie -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                </div>
+                                <input type="text" class="form-control" id="serial-search" 
+                                       placeholder="Buscar por número de serie, parte o SKU...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-primary" onclick="searchSerials()">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="button" class="btn btn-secondary" onclick="clearSearch()">
+                                <i class="fas fa-times"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Agregando contenedor para resultados de búsqueda -->
+                    <div id="search-results" style="display: none;">
+                        <div class="alert alert-info">
+                            <strong>Resultados de búsqueda:</strong> <span id="search-count">0</span> números de serie encontrados
+                        </div>
+                    </div>
+                    
+                    {% if available_serials %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="serials-table">
+                                <thead>
+                                    <tr>
+                                        <th>Número de Serie</th>
+                                        <th>Parte</th>
+                                        <th>SKU</th>
+                                        <th>Descripción</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="serials-tbody">
+                                    {% for serial in available_serials %}
+                                    <tr class="serial-row" data-serial="{{ serial.serial_number|lower }}" 
+                                        data-part="{{ serial.authorized_part.part_number|lower }}"
+                                        data-sku="{{ serial.authorized_part.sku|lower }}">
+                                        <td><strong>{{ serial.serial_number }}</strong></td>
+                                        <td>{{ serial.authorized_part.part_number }}</td>
+                                        <td>{{ serial.authorized_part.sku|default:"-" }}</td>
+                                        <td>{{ serial.authorized_part.description }}</td>
+                                        <td>
+                                            {% if serial.status == 'CREATED' %}
+                                                <span class="badge badge-primary">Creado</span>
+                                            {% elif serial.status == 'IN_PROCESS' %}
+                                                <span class="badge badge-warning">En Proceso</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-success btn-sm" 
+                                                        onclick="completeOperation('{{ serial.id }}', '{{ serial.serial_number }}')">
+                                                    <i class="fas fa-check"></i> Completar
+                                                </button>
+                                                <button type="button" class="btn btn-danger btn-sm" 
+                                                        onclick="rejectSerial('{{ serial.id }}', '{{ serial.serial_number }}')">
+                                                    <i class="fas fa-times"></i> Rechazar
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            No hay números de serie disponibles para esta operación en este momento.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para completar operación -->
+<div class="modal fade" id="completeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Completar Operación</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="completeForm">
+                    <input type="hidden" id="complete-serial-id">
+                    <div class="form-group">
+                        <label>Número de Serie:</label>
+                        <input type="text" class="form-control" id="complete-serial-number" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="complete-notes">Comentarios:</label>
+                        <textarea class="form-control" id="complete-notes" rows="3" 
+                                  placeholder="Agregar comentarios sobre la operación..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="quality-passed" checked>
+                            <label class="form-check-label" for="quality-passed">
+                                Control de calidad aprobado
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="submitComplete()">
+                    <i class="fas fa-check"></i> Completar Operación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para rechazar número de serie -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Rechazar Número de Serie</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="rejectForm">
+                    <input type="hidden" id="reject-serial-id">
+                    <div class="form-group">
+                        <label>Número de Serie:</label>
+                        <input type="text" class="form-control" id="reject-serial-number" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="defect-type">Tipo de Defecto:</label>
+                        <select class="form-control" id="defect-type" required>
+                            <option value="DIMENSIONAL">Dimensional</option>
+                            <option value="VISUAL">Visual</option>
+                            <option value="FUNCTIONAL">Funcional</option>
+                            <option value="MATERIAL">Material</option>
+                            <option value="ASSEMBLY">Ensamble</option>
+                            <option value="OTHER">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="rejection-reason">Razón del Rechazo:</label>
+                        <textarea class="form-control" id="rejection-reason" rows="3" required
+                                  placeholder="Describe detalladamente el defecto encontrado..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="submitReject()">
+                    <i class="fas fa-times"></i> Rechazar y Crear Defecto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Timer para mostrar tiempo transcurrido
+let startTime = new Date('{{ process_record.started_at|date:"c" }}');
+let timerInterval;
+
+function updateTimer() {
+    let now = new Date();
+    let elapsed = now - startTime;
+    
+    let hours = Math.floor(elapsed / (1000 * 60 * 60));
+    let minutes = Math.floor((elapsed % (1000 * 60 * 60)) / (1000 * 60));
+    let seconds = Math.floor((elapsed % (1000 * 60)) / 1000);
+    
+    document.getElementById('elapsed-time').textContent = 
+        String(hours).padStart(2, '0') + ':' + 
+        String(minutes).padStart(2, '0') + ':' + 
+        String(seconds).padStart(2, '0');
+}
+
+// Iniciar timer
+timerInterval = setInterval(updateTimer, 1000);
+updateTimer();
+
+// Funciones para completar operación
+function completeOperation(serialId, serialNumber) {
+    document.getElementById('complete-serial-id').value = serialId;
+    document.getElementById('complete-serial-number').value = serialNumber;
+    new bootstrap.Modal(document.getElementById('completeModal')).show();
+}
+
+function submitComplete() {
+    const serialId = document.getElementById('complete-serial-id').value;
+    const notes = document.getElementById('complete-notes').value;
+    const qualityPassed = document.getElementById('quality-passed').checked;
+    
+    fetch('{% url "operators:complete_operation" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            process_record_id: '{{ process_record.id }}',
+            serial_number_id: serialId,
+            notes: notes,
+            quality_passed: qualityPassed
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error de conexión: ' + error);
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('completeModal')).hide();
+}
+
+// Funciones para rechazar número de serie
+function rejectSerial(serialId, serialNumber) {
+    document.getElementById('reject-serial-id').value = serialId;
+    document.getElementById('reject-serial-number').value = serialNumber;
+    new bootstrap.Modal(document.getElementById('rejectModal')).show();
+}
+
+function submitReject() {
+    const serialId = document.getElementById('reject-serial-id').value;
+    const defectType = document.getElementById('defect-type').value;
+    const rejectionReason = document.getElementById('rejection-reason').value;
+    
+    if (!rejectionReason.trim()) {
+        alert('Por favor ingresa la razón del rechazo');
+        return;
+    }
+    
+    fetch('{% url "operators:reject_serial_number" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            process_record_id: '{{ process_record.id }}',
+            serial_number_id: serialId,
+            defect_type: defectType,
+            rejection_reason: rejectionReason
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        alert('Error de conexión: ' + error);
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('rejectModal')).hide();
+}
+
+// Función para liberar operación
+function releaseOperation() {
+    if (confirm('¿Estás seguro de que quieres liberar esta operación?')) {
+        fetch('{% url "operators:release_operation" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                process_record_id: '{{ process_record.id }}'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                window.location.href = '{% url "operators:operator_dashboard" %}';
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            alert('Error de conexión: ' + error);
+        });
+    }
+}
+
+// Limpiar timer al salir de la página
+window.addEventListener('beforeunload', function() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+    }
+});
+
+function searchSerials() {
+    const searchTerm = document.getElementById('serial-search').value.toLowerCase().trim();
+    const rows = document.querySelectorAll('.serial-row');
+    const searchResults = document.getElementById('search-results');
+    const searchCount = document.getElementById('search-count');
+    let visibleCount = 0;
+    
+    if (searchTerm === '') {
+        // Si no hay término de búsqueda, mostrar todas las filas
+        rows.forEach(row => {
+            row.style.display = '';
+            visibleCount++;
+        });
+        searchResults.style.display = 'none';
+    } else {
+        // Filtrar filas basado en el término de búsqueda
+        rows.forEach(row => {
+            const serialNumber = row.getAttribute('data-serial') || '';
+            const partNumber = row.getAttribute('data-part') || '';
+            const sku = row.getAttribute('data-sku') || '';
+            
+            if (serialNumber.includes(searchTerm) || 
+                partNumber.includes(searchTerm) || 
+                sku.includes(searchTerm)) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        // Mostrar resultados de búsqueda
+        searchCount.textContent = visibleCount;
+        searchResults.style.display = 'block';
+    }
+}
+
+function clearSearch() {
+    document.getElementById('serial-search').value = '';
+    const rows = document.querySelectorAll('.serial-row');
+    const searchResults = document.getElementById('search-results');
+    
+    // Mostrar todas las filas
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    // Ocultar resultados de búsqueda
+    searchResults.style.display = 'none';
+}
+
+document.getElementById('serial-search').addEventListener('input', function() {
+    searchSerials();
+});
+
+document.getElementById('serial-search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        searchSerials();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle de Defecto #{{ defect.id }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">Detalle de Defecto #{{ defect.id }}</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'analytics:dashboard' %}">Dashboard</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'defects:defects_dashboard' %}">Defectos</a></li>
+                            <li class="breadcrumb-item active">Defecto #{{ defect.id }}</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <a href="{% url 'defects:defects_dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Main Defect Information -->
+                <div class="col-lg-8">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Información del Defecto</h5>
+                            <span class="badge badge-{{ defect.status|lower }} fs-6">
+                                {{ defect.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Información Básica</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>Número de Serie:</strong></td>
+                                            <td>
+                                                <a href="{% url 'operations:manufacturing_process' defect.serial_number.serial_number %}">
+                                                    {{ defect.serial_number.serial_number }}
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Operación:</strong></td>
+                                            <td>{{ defect.operation.name }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Tipo de Defecto:</strong></td>
+                                            <td>{{ defect.get_defect_type_display }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Severidad:</strong></td>
+                                            <td>
+                                                <span class="badge badge-{{ defect.severity|lower }}">
+                                                    {{ defect.get_severity_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Reportado por:</strong></td>
+                                            <td>{{ defect.reported_by.get_full_name|default:defect.reported_by.username }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Fecha de Reporte:</strong></td>
+                                            <td>{{ defect.created_at|date:"d/m/Y H:i" }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Estado y Asignación</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td><strong>Estado:</strong></td>
+                                            <td>
+                                                <span class="badge badge-{{ defect.status|lower }}">
+                                                    {{ defect.get_status_display }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Asignado a:</strong></td>
+                                            <td>
+                                                {% if defect.assigned_repairer %}
+                                                    {{ defect.assigned_repairer.get_full_name|default:defect.assigned_repairer.username }}
+                                                {% else %}
+                                                    <span class="text-muted">Sin asignar</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% if defect.assigned_at %}
+                                        <tr>
+                                            <td><strong>Asignado el:</strong></td>
+                                            <td>{{ defect.assigned_at|date:"d/m/Y H:i" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if defect.resolved_at %}
+                                        <tr>
+                                            <td><strong>Resuelto el:</strong></td>
+                                            <td>{{ defect.resolved_at|date:"d/m/Y H:i" }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        {% if defect.resolved_by %}
+                                        <tr>
+                                            <td><strong>Resuelto por:</strong></td>
+                                            <td>{{ defect.resolved_by.get_full_name|default:defect.resolved_by.username }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Description -->
+                            <div class="mt-3">
+                                <h6 class="text-muted">Descripción del Defecto</h6>
+                                <div class="bg-light p-3 rounded">
+                                    {{ defect.description|linebreaks }}
+                                </div>
+                            </div>
+
+                            <!-- Repair Notes -->
+                            {% if defect.repair_notes %}
+                            <div class="mt-3">
+                                <h6 class="text-muted">Notas de Reparación</h6>
+                                <div class="bg-light p-3 rounded">
+                                    {{ defect.repair_notes|linebreaks }}
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <!-- Return to Operation -->
+                            {% if defect.return_to_operation %}
+                            <div class="mt-3">
+                                <h6 class="text-muted">Retornar a Operación</h6>
+                                <p class="mb-0">{{ defect.return_to_operation.name }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    {% if user.userprofile.role in 'ADMIN,SUPERVISOR' or defect.assigned_repairer == user %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Acciones</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                {% if defect.status == 'OPEN' and user.userprofile.role in 'ADMIN,SUPERVISOR' %}
+                                <div class="col-md-6">
+                                    <button class="btn btn-primary btn-block" onclick="showAssignModal()">
+                                        <i class="fas fa-user-plus"></i> Asignar Reparador
+                                    </button>
+                                </div>
+                                {% endif %}
+                                
+                                {% if defect.status in 'OPEN,IN_REPAIR' and defect.assigned_repairer == user %}
+                                <div class="col-md-6">
+                                    <button class="btn btn-success btn-block" onclick="showResolveModal()">
+                                        <i class="fas fa-check"></i> Resolver Defecto
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Sidebar -->
+                <div class="col-lg-4">
+                    <!-- Serial Number Info -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">Información del Número de Serie</h6>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <tr>
+                                    <td><strong>Componente:</strong></td>
+                                    <td>{{ defect.serial_number.authorized_part.part_number }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Estado:</strong></td>
+                                    <td>
+                                        <span class="badge badge-{{ defect.serial_number.status|lower }}">
+                                            {{ defect.serial_number.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Orden:</strong></td>
+                                    <td>{{ defect.serial_number.work_order|default:"N/A" }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Creado:</strong></td>
+                                    <td>{{ defect.serial_number.created_at|date:"d/m/Y" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Defect History -->
+                    {% if defect_history %}
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0">Historial de Defectos</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="timeline">
+                                {% for hist_defect in defect_history %}
+                                <div class="timeline-item">
+                                    <div class="timeline-marker bg-{{ hist_defect.status|lower }}"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">{{ hist_defect.get_defect_type_display }}</h6>
+                                        <p class="text-muted mb-1">{{ hist_defect.operation.name }}</p>
+                                        <small class="text-muted">{{ hist_defect.created_at|date:"d/m/Y H:i" }}</small>
+                                        <span class="badge badge-{{ hist_defect.status|lower }} ml-2">
+                                            {{ hist_defect.get_status_display }}
+                                        </span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Modal -->
+<div class="modal fade" id="assignModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Asignar Reparador</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="assignForm">
+                    <div class="mb-3">
+                        <label for="repairerId" class="form-label">Seleccionar Reparador</label>
+                        <select class="form-select" id="repairerId" required>
+                            <option value="">Seleccionar...</option>
+                            <!-- Options will be loaded via AJAX -->
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="assignDefect()">Asignar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resolve Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Resolver Defecto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="resolveForm">
+                    <div class="mb-3">
+                        <label for="repairNotes" class="form-label">Notas de Reparación</label>
+                        <textarea class="form-control" id="repairNotes" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="returnToOperation" class="form-label">Retornar a Operación</label>
+                        <select class="form-select" id="returnToOperation">
+                            <option value="">Marcar como Desecho</option>
+                            <!-- Options will be loaded via AJAX -->
+                        </select>
+                        <div class="form-text">Si no selecciona una operación, el número de serie será marcado como desecho.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="resolveDefect()">Resolver</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-open { background-color: #dc3545; }
+.badge-in_repair { background-color: #ffc107; color: #000; }
+.badge-repaired { background-color: #28a745; }
+.badge-scrapped { background-color: #6c757d; }
+.badge-low { background-color: #28a745; }
+.badge-medium { background-color: #ffc107; color: #000; }
+.badge-high { background-color: #fd7e14; }
+.badge-critical { background-color: #dc3545; }
+
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -35px;
+    top: 5px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.timeline-item:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: -31px;
+    top: 15px;
+    width: 2px;
+    height: calc(100% + 10px);
+    background-color: #dee2e6;
+}
+</style>
+
+<script>
+function showAssignModal() {
+    // Load repairers
+    fetch('/api/repairers/')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('repairerId');
+            select.innerHTML = '<option value="">Seleccionar...</option>';
+            data.repairers.forEach(repairer => {
+                select.innerHTML += `<option value="${repairer.id}">${repairer.name}</option>`;
+            });
+        });
+    
+    new bootstrap.Modal(document.getElementById('assignModal')).show();
+}
+
+function showResolveModal() {
+    // Load operations
+    fetch('/api/operations/')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.getElementById('returnToOperation');
+            select.innerHTML = '<option value="">Marcar como Desecho</option>';
+            data.operations.forEach(operation => {
+                select.innerHTML += `<option value="${operation.id}">${operation.name}</option>`;
+            });
+        });
+    
+    new bootstrap.Modal(document.getElementById('resolveModal')).show();
+}
+
+function assignDefect() {
+    const repairerId = document.getElementById('repairerId').value;
+    if (!repairerId) {
+        alert('Por favor seleccione un reparador');
+        return;
+    }
+    
+    fetch('{% url "defects:assign_defect" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            defect_id: {{ defect.id }},
+            repairer_id: repairerId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+function resolveDefect() {
+    const repairNotes = document.getElementById('repairNotes').value;
+    const returnToOperation = document.getElementById('returnToOperation').value;
+    
+    if (!repairNotes.trim()) {
+        alert('Por favor ingrese las notas de reparación');
+        return;
+    }
+    
+    fetch('{% url "defects:resolve_defect" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            defect_id: {{ defect.id }},
+            repair_notes: repairNotes,
+            return_to_operation: returnToOperation
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

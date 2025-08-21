@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Manufactura{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts - Corporate Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Updated to Honeywell-style corporate colors */
+            --primary-color: #003d7a;
+            --secondary-color: #6c757d;
+            --accent-color: #0066cc;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --light-gray: #f8f9fa;
+            --medium-gray: #e9ecef;
+            --dark-gray: #495057;
+            --border-color: #dee2e6;
+        }
+        
+        body {
+            /* Corporate background and typography */
+            background-color: #f5f5f5;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .navbar {
+            /* Corporate header styling */
+            background-color: var(--primary-color) !important;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            /* Corporate brand styling */
+            font-weight: 600;
+            color: white !important;
+            font-size: 18px;
+        }
+        
+        .navbar .nav-link,
+        .navbar .dropdown-toggle {
+            color: rgba(255,255,255,0.9) !important;
+        }
+        
+        .navbar .nav-link:hover,
+        .navbar .dropdown-toggle:hover {
+            color: white !important;
+        }
+        
+        .sidebar {
+            /* Corporate sidebar with flat design */
+            min-height: calc(100vh - 56px);
+            background-color: #2c3e50;
+            border-right: 1px solid var(--border-color);
+            box-shadow: none;
+        }
+        
+        .sidebar .nav-link {
+            /* Flat corporate navigation links */
+            color: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            margin: 2px 0;
+            border-radius: 0;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: white;
+            background-color: rgba(255,255,255,0.1);
+            border-left-color: var(--accent-color);
+            transform: none;
+        }
+        
+        .sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255,255,255,0.15);
+            border-left-color: var(--accent-color);
+        }
+        
+        .main-content {
+            padding: 24px;
+            background-color: #f5f5f5;
+        }
+        
+        .card {
+            /* Corporate card styling - flat and professional */
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: box-shadow 0.2s ease;
+            background-color: white;
+        }
+        
+        .card:hover {
+            transform: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        
+        .card-header {
+            background-color: var(--light-gray);
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            color: var(--dark-gray);
+        }
+        
+        .stat-card {
+            /* Corporate stat cards with flat colors */
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        
+        .stat-card.success {
+            background-color: var(--success-color);
+        }
+        
+        .stat-card.warning {
+            background-color: var(--warning-color);
+            color: #333;
+        }
+        
+        .stat-card.danger {
+            background-color: var(--danger-color);
+        }
+        
+        .btn-primary {
+            /* Corporate button styling */
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            border-radius: 4px;
+            padding: 8px 16px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .btn-primary:hover {
+            background-color: #002a5c;
+            border-color: #002a5c;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+            border-radius: 4px;
+        }
+        
+        .table {
+            /* Corporate table styling */
+            border-radius: 4px;
+            overflow: hidden;
+            font-size: 14px;
+        }
+        
+        .table thead th {
+            background-color: var(--light-gray);
+            border-bottom: 2px solid var(--border-color);
+            font-weight: 600;
+            color: var(--dark-gray);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .badge {
+            /* Corporate badge styling */
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .progress {
+            height: 6px;
+            border-radius: 3px;
+            background-color: var(--medium-gray);
+        }
+        
+        .alert {
+            /* Corporate alert styling */
+            border: 1px solid;
+            border-radius: 4px;
+            border-left-width: 4px;
+        }
+        
+        .alert-info {
+            border-left-color: var(--accent-color);
+            background-color: #e3f2fd;
+            border-color: #bbdefb;
+            color: #0d47a1;
+        }
+        
+        .alert-success {
+            border-left-color: var(--success-color);
+            background-color: #e8f5e8;
+            border-color: #c3e6c3;
+            color: #155724;
+        }
+        
+        .alert-warning {
+            border-left-color: var(--warning-color);
+            background-color: #fff8e1;
+            border-color: #ffecb3;
+            color: #856404;
+        }
+        
+        .alert-danger {
+            border-left-color: var(--danger-color);
+            background-color: #ffeaea;
+            border-color: #ffcdd2;
+            color: #721c24;
+        }
+        
+        .filter-section {
+            /* Corporate filter section */
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .form-control,
+        .form-select {
+            /* Corporate form controls */
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+        
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 0.2rem rgba(0, 102, 204, 0.25);
+        }
+        
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+        }
+        
+        /* Corporate page headers */
+        .page-header {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin: 0;
+        }
+        
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin: 4px 0 0 0;
+        }
+        
+        /* Corporate dropdown menus */
+        .dropdown-menu {
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .dropdown-item {
+            font-size: 14px;
+            padding: 8px 16px;
+        }
+        
+        .dropdown-item:hover {
+            background-color: var(--light-gray);
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'analytics:dashboard' %}">
+                <i class="bi bi-gear-fill me-2"></i>
+                Sistema de Manufactura
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i>
+                            {{ user.get_full_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Perfil</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Configuración</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'operators:logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'analytics:dashboard' %}">
+                                <i class="bi bi-speedometer2 me-2"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'generate_serial' %}active{% endif %}" href="{% url 'serials:generate_serial' %}">
+                                <i class="bi bi-plus-circle me-2"></i>
+                                Generar Serie
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'summary' %}active{% endif %}" href="{% url 'operations:summary' %}">
+                                <i class="bi bi-table me-2"></i>
+                                Resumen
+                            </a>
+                        </li>
+                        {% if user.userprofile.role == 'OPERATOR' or user.userprofile.role == 'SUPERVISOR' or user.userprofile.role == 'ADMIN' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'operator_dashboard' %}active{% endif %}" href="{% url 'operators:operator_dashboard' %}">
+                                <i class="bi bi-person-workspace me-2"></i>
+                                Operador
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.userprofile.role == 'REPAIRER' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'repairer_dashboard' %}active{% endif %}" href="{% url 'defects:repairer_dashboard' %}">
+                                <i class="bi bi-tools me-2"></i>
+                                Reparador
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.userprofile.role == 'SUPERVISOR' or user.userprofile.role == 'ADMIN' %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'defects_dashboard' %}active{% endif %}" href="{% url 'defects:defects_dashboard' %}">
+                                <i class="bi bi-exclamation-triangle me-2"></i>
+                                Defectos
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.is_superuser or user.userprofile.can_view_statistics %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'statistics_view' %}active{% endif %}" href="{% url 'analytics:statistics_view' %}">
+                                <i class="bi bi-bar-chart me-2"></i>
+                                Estadísticas
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% if user.is_superuser or user.userprofile.can_manage_users %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'admin_panel' %}active{% endif %}" href="{% url 'operations:admin_panel' %}">
+                                <i class="bi bi-shield-lock me-2"></i>
+                                Administración
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <!-- Messages -->
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="notification-toast"></div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- WebSocket Connection -->
+    <script>
+        // WebSocket for real-time notifications
+        let notificationSocket = null;
+        let dashboardSocket = null;
+        
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/notifications/`;
+            const dashboardUrl = `${protocol}//${window.location.host}/ws/dashboard/`;
+            
+            notificationSocket = new WebSocket(wsUrl);
+            dashboardSocket = new WebSocket(dashboardUrl);
+            
+            notificationSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if (data.type === 'notification' || data.type === 'process_update') {
+                    showNotification(data.message, data.alert_type || 'info');
+                }
+            };
+            
+            dashboardSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                if (data.type === 'dashboard_update') {
+                    // Refresh dashboard data if on dashboard page
+                    if (window.location.pathname.includes('dashboard')) {
+                        location.reload();
+                    }
+                }
+            };
+            
+            notificationSocket.onclose = function(e) {
+                console.log('Notification socket closed. Reconnecting...');
+                setTimeout(connectWebSocket, 5000);
+            };
+            
+            dashboardSocket.onclose = function(e) {
+                console.log('Dashboard socket closed. Reconnecting...');
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+        
+        function showNotification(message, type = 'info') {
+            const toastContainer = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+            toast.show();
+            
+            // Remove toast element after it's hidden
+            toastElement.addEventListener('hidden.bs.toast', function() {
+                toastElement.remove();
+            });
+        }
+        
+        // Connect WebSocket when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            connectWebSocket();
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

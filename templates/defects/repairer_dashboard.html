@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard del Reparador{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-gray-800">Dashboard del Reparador</h1>
+                <span class="badge badge-info">{{ user_profile.get_role_display }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assigned Defects -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Defectos Asignados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Número de Serie</th>
+                            <th>Operación</th>
+                            <th>Tipo</th>
+                            <th>Descripción</th>
+                            <th>Estado</th>
+                            <th>Fecha</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for defect in assigned_defects %}
+                        <tr>
+                            <td>{{ defect.serial_number.serial_number }}</td>
+                            <td>{{ defect.operation.name }}</td>
+                            <td>{{ defect.get_defect_type_display }}</td>
+                            <td>{{ defect.description|truncatechars:50 }}</td>
+                            <td>
+                                <span class="badge badge-{% if defect.status == 'OPEN' %}warning{% else %}info{% endif %}">
+                                    {{ defect.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ defect.created_at|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <a href="{% url 'defects:defect_detail' defect.id %}" class="btn btn-sm btn-primary">Trabajar</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center">No tienes defectos asignados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completed Defects History -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-success">Historial de Defectos Completados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Número de Serie</th>
+                            <th>Operación</th>
+                            <th>Tipo</th>
+                            <th>Estado</th>
+                            <th>Resolución</th>
+                            <th>Fecha Completado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for defect in completed_defects %}
+                        <tr>
+                            <td>{{ defect.serial_number.serial_number }}</td>
+                            <td>{{ defect.operation.name }}</td>
+                            <td>{{ defect.get_defect_type_display }}</td>
+                            <td>
+                                <span class="badge badge-{% if defect.status == 'RESOLVED' %}success{% else %}danger{% endif %}">
+                                    {{ defect.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ defect.resolution|truncatechars:50|default:"Sin resolución" }}</td>
+                            <td>{{ defect.resolved_at|date:"d/m/Y H:i"|default:"N/A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No hay historial de defectos completados</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,5 +1,4 @@
 #!/usr/bin//env bash
-
 pip install --upgrade pip
 set -o errexit
 pip install -r requirements.txt

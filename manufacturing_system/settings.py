@@ -104,7 +104,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = '/opt/render/project/src/staticfiles'
-STATICFILES_DIRS = [BASE_DIR / "static",]
+#STATICFILES_DIRS = [BASE_DIR / 'static',]
 
 if not DEBUG:   
     STATIC_URL= os.path.join(BASE_DIR / 'staticfiles')

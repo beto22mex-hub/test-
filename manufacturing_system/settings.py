@@ -109,7 +109,7 @@ STATICFILES_DIRS = [
 
 if not DEBUG:   
     STATIC_URL= os.path.join(BASE_DIR / 'staticfiles')
-    STATICFILES_STORAGE='whitenoise.storage.CompressesManifestStaticFileStorage'
+    STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
